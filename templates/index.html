@@ -22,7 +22,7 @@
 
                 <div>
                     <h2>HR Policy AI</h2>
-                    <span>Smart HR Assistant</span>
+                    <span>Enterprise Assistant</span>
                 </div>
             </div>
 
@@ -33,7 +33,7 @@
 
             <div class="sidebar-section">
 
-                <p class="section-title">Suggested Questions</p>
+                <p class="section-title">Policy Categories</p>
 
                 <button class="suggestion"
                     onclick="askQuestion('How many days of annual leave can employees take?')">
@@ -47,7 +47,7 @@
 
                 <button class="suggestion"
                     onclick="askQuestion('Can employees work from home?')">
-                    🏠 Work From Home
+                    🏠 Remote Work
                 </button>
 
                 <button class="suggestion"
@@ -57,7 +57,7 @@
 
                 <button class="suggestion"
                     onclick="askQuestion('What is the notice period when resigning?')">
-                    📄 Notice Period
+                    📄 Resignation
                 </button>
 
             </div>
@@ -70,7 +70,7 @@
                 </div>
 
                 <div class="powered">
-                    Powered by Gemini + RAG
+                    Gemini · RAG · PostgreSQL
                 </div>
 
             </div>
@@ -95,7 +95,7 @@
 
                         <div class="online-status">
                             <span></span>
-                            Online
+                            AI Assistant
                         </div>
                     </div>
 
@@ -111,35 +111,24 @@
             <!-- MESSAGES -->
             <section class="messages" id="messages">
 
-                <div class="message bot-message">
+                <!-- PROFESSIONAL WELCOME -->
+                <div class="welcome-section">
 
-                    <div class="avatar bot-avatar">
+                    <div class="welcome-icon">
                         ✦
                     </div>
 
-                    <div class="message-content">
+                    <h2>HR Policy Assistant</h2>
 
-                        <div class="sender">
-                            HR Policy AI
-                        </div>
-
-                        <div class="bubble">
-                            Hello! 👋<br><br>
-
-                            I'm your HR Policy Assistant. I can help you find
-                            information from the company's HR policies.
-
-                            <br><br>
-
-                            Ask me about leave, working hours, work from home,
-                            resignation, payroll, training, and more.
-                        </div>
-
-                    </div>
+                    <p>
+                        Search and retrieve information from the organization's
+                        HR policy knowledge base.
+                    </p>
 
                 </div>
 
 
+                <!-- POLICY CARDS -->
                 <div class="welcome-cards">
 
                     <div class="welcome-card"
@@ -149,7 +138,7 @@
 
                         <div>
                             <strong>Annual Leave</strong>
-                            <small>Ask about leave entitlement</small>
+                            <small>Leave entitlement and policies</small>
                         </div>
 
                     </div>
@@ -162,7 +151,7 @@
 
                         <div>
                             <strong>Maternity Leave</strong>
-                            <small>Check maternity benefits</small>
+                            <small>Maternity benefits and eligibility</small>
                         </div>
 
                     </div>
@@ -174,8 +163,47 @@
                         <span>🏠</span>
 
                         <div>
-                            <strong>Work From Home</strong>
-                            <small>Check remote work policy</small>
+                            <strong>Remote Work</strong>
+                            <small>Work-from-home policies</small>
+                        </div>
+
+                    </div>
+
+
+                    <div class="welcome-card"
+                        onclick="askQuestion('What are the standard working hours?')">
+
+                        <span>🕘</span>
+
+                        <div>
+                            <strong>Working Hours</strong>
+                            <small>Working hours and attendance</small>
+                        </div>
+
+                    </div>
+
+
+                    <div class="welcome-card"
+                        onclick="askQuestion('What is the notice period when resigning?')">
+
+                        <span>📄</span>
+
+                        <div>
+                            <strong>Resignation</strong>
+                            <small>Notice period and exit policies</small>
+                        </div>
+
+                    </div>
+
+
+                    <div class="welcome-card"
+                        onclick="askQuestion('How is salary paid to employees?')">
+
+                        <span>💰</span>
+
+                        <div>
+                            <strong>Compensation</strong>
+                            <small>Salary and compensation policies</small>
                         </div>
 
                     </div>
@@ -196,7 +224,7 @@
 
                 </div>
 
-                <small>HR Policy AI is thinking...</small>
+                <small>Processing your request...</small>
 
             </div>
 
@@ -208,21 +236,23 @@
 
                     <textarea
                         id="question"
-                        placeholder="Ask anything about HR policies..."
+                        placeholder="Ask about HR policies..."
                         rows="1"
                         onkeydown="handleKey(event)"
                     ></textarea>
 
-                    <button id="sendButton" onclick="sendMessage()">
-
+                    <button
+                        id="sendButton"
+                        onclick="sendMessage()"
+                        aria-label="Send message"
+                    >
                         <span>➤</span>
-
                     </button>
 
                 </div>
 
                 <p class="input-note">
-                    HR Policy AI answers using information from your policy database.
+                    Responses are generated from the organization's HR policy knowledge base.
                 </p>
 
             </footer>
