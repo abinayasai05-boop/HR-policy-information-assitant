@@ -852,10 +852,10 @@ policy evidence and the instructions above.
     # ========================================================
 
     if not answer:
-        # Do not invent an answer when Gemini is unavailable.
-        # The retrieved policy text is provided as a fallback.
-        answer = results[0]["content"]
-
+        answer = (
+            "Sorry, I couldn't generate an answer right now. "
+            "Please try again in a moment."
+        )
     # ========================================================
     # STEP 11: SAVE CONVERSATION
     # ========================================================
