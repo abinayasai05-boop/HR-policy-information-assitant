@@ -690,7 +690,8 @@ def generate_answer(
             f"Policy ID: {row['policy_id']} | "
             f"Title: {row['title']} | "
             f"Category: {row['category']} | "
-            f"Similarity: {float(row['similarity']):.3f}"
+            f"Similarity: {float(row['score']):.3f}"
+
         )
         # STEP 4: CHECK RETRIEVAL RESULTS
     if not results:
@@ -710,7 +711,7 @@ def generate_answer(
 
     print("DEBUG: Best similarity:", top_score)
     print("DEBUG: Required threshold:", SIMILARITY_THRESHOLD)
-
+     
     if top_score < SIMILARITY_THRESHOLD:
         print("FAILURE REASON: SIMILARITY BELOW THRESHOLD")
 
@@ -719,8 +720,8 @@ def generate_answer(
             "in the HR policies."
         )
 
-    save_conversation(question, answer, session_id)
-    return answer
+        save_conversation(question, answer, session_id)
+        return answer
 
 
     # ========================================================
