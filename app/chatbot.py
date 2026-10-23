@@ -705,9 +705,8 @@ def generate_answer(
         return answer
 
     # STEP 5: CHECK SIMILARITY THRESHOLD
-    
-top_score = float(results[0]["score"])
 
+    top_score = float(results[0]["score"])
 
     print("DEBUG: Best similarity:", top_score)
     print("DEBUG: Required threshold:", SIMILARITY_THRESHOLD)
@@ -720,8 +719,9 @@ top_score = float(results[0]["score"])
             "in the HR policies."
         )
 
-        save_conversation(question, answer, session_id)
-        return answer
+    save_conversation(question, answer, session_id)
+    return answer
+
 
     # ========================================================
     # STEP 6: CREATE POLICY CONTEXT
