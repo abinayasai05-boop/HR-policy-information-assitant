@@ -248,17 +248,19 @@ def create_query_embedding(query):
 def generate_gemini_response(prompt):
     """
     Generate a response using Gemini.
-
-    Retries temporary errors and returns None if Gemini
-    remains unavailable.
+    Retry temporary errors with limited waiting time.
     """
 
     for attempt in range(MAX_GEMINI_RETRIES):
-
         try:
             response = client.models.generate_content(
                 model=GEMINI_MODEL,
-                contents=prompt
+                contents=prompt,
+                config={
+                    "http_options": {
+                        "timeout": 20000
+                    }
+                }
             )
 
             if (
@@ -266,52 +268,40 @@ def generate_gemini_response(prompt):
                 or not response.text
                 or not response.text.strip()
             ):
-                raise RuntimeError(
-                    "Gemini returned an empty response."
-                )
+                print("Gemini returned an empty response.")
+                return None
 
             return response.text.strip()
 
         except Exception as e:
-
             error_text = str(e).upper()
 
-            is_temporary_error = (
-                "503" in error_text
-                or "UNAVAILABLE" in error_text
-                or "SERVICE UNAVAILABLE" in error_text
-                or "DEADLINE EXCEEDED" in error_text
-                or "TIMEOUT" in error_text
-                or "RESOURCE EXHAUSTED" in error_text
-                or "429" in error_text
-                or "504" in error_text
+            is_temporary_error = any(
+                message in error_text
+                for message in (
+                    "503",
+                    "UNAVAILABLE",
+                    "SERVICE UNAVAILABLE",
+                    "DEADLINE EXCEEDED",
+                    "TIMEOUT",
+                    "RESOURCE EXHAUSTED",
+                    "429",
+                    "504",
+                )
             )
 
+            print(f"Gemini attempt {attempt + 1} failed: {e}")
+
             if not is_temporary_error:
-                print("\nGemini Error:")
-                print(e)
                 raise
 
             if attempt == MAX_GEMINI_RETRIES - 1:
-                print(
-                    "\nGemini is temporarily unavailable "
-                    "after multiple attempts."
-                )
+                print("Gemini is unavailable after retries.")
                 return None
 
-            wait_time = 2 ** attempt
-
-            print(
-                f"\nGemini temporarily unavailable "
-                f"(attempt {attempt + 1}/"
-                f"{MAX_GEMINI_RETRIES}). "
-                f"Retrying in {wait_time} seconds..."
-            )
-
-            time.sleep(wait_time)
+            time.sleep(1)
 
     return None
-
 
 # ============================================================
 # SAVE CONVERSATION TO POSTGRESQL
