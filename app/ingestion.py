@@ -6,17 +6,7 @@ from dotenv import load_dotenv
 
 from app.database import get_connection
 
-
-# ============================================================
-# LOAD ENVIRONMENT VARIABLES
-# ============================================================
-
 load_dotenv()
-
-
-# ============================================================
-# GEMINI EMBEDDING CLIENT
-# ============================================================
 
 print("Initializing Gemini Embedding 2...")
 
@@ -41,14 +31,7 @@ print(f"Embedding model: {EMBEDDING_MODEL}")
 print(f"Embedding dimension: {EMBEDDING_DIMENSION}")
 
 
-# ============================================================
-# FUNCTION TO CREATE EMBEDDING
-# ============================================================
-
 def create_embedding(text):
-    """
-    Generate a cloud-based embedding using Gemini Embedding 2.
-    """
 
     result = client.models.embed_content(
         model=EMBEDDING_MODEL,
@@ -61,31 +44,16 @@ def create_embedding(text):
     return result.embeddings[0].values
 
 
-# ============================================================
-# LOAD HR POLICY DATASET
-# ============================================================
-
 df = pd.read_csv("data/hr_policies.csv")
 
 print("\nHR Policy Dataset Loaded Successfully!")
 print(f"Number of policies: {len(df)}")
 
-
-# ============================================================
-# CONNECT TO POSTGRESQL
-# ============================================================
-
 conn = get_connection()
 cursor = conn.cursor()
 
-
-# ============================================================
-# INSERT POLICIES INTO POSTGRESQL
-# ============================================================
-
 for _, row in df.iterrows():
 
-    # Create text that represents the HR policy
     text = (
         f"title: {row['title']} | "
         f"text: {row['content']}"
@@ -96,14 +64,10 @@ for _, row in df.iterrows():
         f"{row['policy_id']} - {row['title']}"
     )
 
-    # Generate cloud embedding
     embedding = create_embedding(text)
 
-    print(
-        f"Embedding dimension: {len(embedding)}"
-    )
+    print(f"Embedding dimension: {len(embedding)}")
 
-    # Insert into PostgreSQL + pgvector
     cursor.execute(
         """
         INSERT INTO hr_policies
@@ -119,16 +83,10 @@ for _, row in df.iterrows():
         )
     )
 
-
-# ============================================================
-# COMMIT CHANGES
-# ============================================================
-
 conn.commit()
 
 cursor.close()
 conn.close()
-
 
 print("\nAll HR policies inserted successfully!")
 print("Gemini embeddings stored in PostgreSQL + pgvector.")

@@ -107,7 +107,8 @@ def search_policies(query, top_k=3):
 
 
     results = cursor.fetchall()
-
+    print("DEBUG: Raw results:", results[:1])
+print("DEBUG: Cursor column names:", [col[0] for col in cursor.description])
 
     cursor.close()
     conn.close()

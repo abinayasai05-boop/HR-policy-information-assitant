@@ -1,6 +1,8 @@
+
 import os
 import uuid
 import time
+import re
 
 from dotenv import load_dotenv
 from google import genai
@@ -38,7 +40,7 @@ client = genai.Client(
 
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
-    "gemini-3.5-flash-lite"
+    "gemini-3.8-flash",
 )
 
 MAX_GEMINI_RETRIES = 2
@@ -65,16 +67,8 @@ EMBEDDING_DIMENSION = int(
 # RAG CONFIGURATION
 # ============================================================
 
-TOP_K = 3
-
-# Minimum similarity required before
-# retrieved policy information is used.
-
-SIMILARITY_THRESHOLD = 0.55
-
-# Number of previous conversation turns
-# used as conversation memory.
-
+TOP_K = 5
+SIMILARITY_THRESHOLD = 0.45
 MEMORY_LIMIT = 5
 
 
@@ -84,17 +78,11 @@ MEMORY_LIMIT = 5
 
 print("\nInitializing Gemini Embedding 2...")
 
-print(
-    f"Embedding model: {EMBEDDING_MODEL}"
-)
+print(f"Embedding model: {EMBEDDING_MODEL}")
 
-print(
-    f"Embedding dimension: {EMBEDDING_DIMENSION}"
-)
+print(f"Embedding dimension: {EMBEDDING_DIMENSION}")
 
-print(
-    "Gemini Embedding 2 initialized successfully!"
-)
+print("Gemini Embedding 2 initialized successfully!")
 
 
 # ============================================================
@@ -103,70 +91,99 @@ print(
 
 def handle_simple_message(question):
     """
-    Handle greetings and simple conversational messages
-    without performing RAG search.
-
-    Returns:
-        Response string if the message is a simple
-        conversational message.
-
-        None if the question should continue
-        through the RAG pipeline.
+    Handle greetings, thanks, and simple help messages
+    without performing an HR policy search.
     """
 
     text = question.lower().strip()
+    text = re.sub(r"[^\w\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
 
     # --------------------------------------------------------
     # GREETINGS
     # --------------------------------------------------------
 
     greetings = {
-        "hi",
-        "hello",
-        "hey",
-        "hii",
-        "hiii",
-        "heyy",
-        "helo",
-        "hai"
+        "hi", "hii", "hiii", "hello", "helo",
+        "hey", "heyy", "hai",
     }
+
+    help_questions = {
+        "help",
+        "who are you",
+        "what can you do",
+        "what can you help me with",
+        "how can i access you",
+        "how can i use you",
+        "how do i use you",
+        "what can i ask you",
+        "how can you help me",
+    }
+
+    # Handle greetings, including greetings with questions
+    words = text.split()
 
     if text in greetings:
         return (
             "Hello! 👋 I'm your HR Policy Assistant. "
-            "How can I help you with our HR policies?"
+            "I can help you understand company HR policies. "
+            "What would you like to know?"
+        )
+
+    if words and words[0] in greetings:
+        remaining_text = " ".join(words[1:])
+
+        if (
+            not remaining_text
+            or any(question in remaining_text for question in help_questions)
+            or "what can i ask" in remaining_text
+            or "what can you do" in remaining_text
+            or "how can you help" in remaining_text
+        ):
+            return (
+                "Hello! 👋 I'm your HR Policy Assistant. 🤖\n\n"
+                "You can ask me about annual leave, sick leave, "
+                "working hours, work from home, resignation, salary, "
+                "overtime, and other topics covered by your HR policies.\n\n"
+                "For example:\n"
+                "- Can I take sick leave for two days?\n"
+                "- What is the annual leave policy?\n"
+                "- Can I work from home?"
+            )
+
+    if text in help_questions:
+        return (
+            "I'm your HR Policy Assistant. 🤖\n\n"
+            "You can ask me about annual leave, sick leave, "
+            "working hours, work from home, resignation, salary, "
+            "overtime, and other topics covered by your HR policies.\n\n"
+            "For example:\n"
+            "- Can I take sick leave for two days?\n"
+            "- What is the annual leave policy?\n"
+            "- Can I work from home?\n\n"
+            "I'll answer using the available HR policy information."
         )
 
     # --------------------------------------------------------
     # TIME-BASED GREETINGS
     # --------------------------------------------------------
 
-    if text in {
-        "good morning",
-        "morning",
-        "gm"
-    }:
+    if text in {"good morning", "morning", "gm"}:
         return (
             "Good morning! 👋 I'm your HR Policy Assistant. "
-            "How can I help you with our HR policies?"
+            "How can I help you with HR policies today?"
         )
 
-    if text in {
-        "good afternoon",
-        "afternoon"
-    }:
+    if text in {"good afternoon", "afternoon"}:
         return (
             "Good afternoon! 👋 I'm your HR Policy Assistant. "
-            "How can I help you with our HR policies?"
+            "How can I help you with HR policies today?"
         )
 
-    if text in {
-        "good evening",
-        "evening"
-    }:
+    if text in {"good evening", "evening"}:
         return (
             "Good evening! 👋 I'm your HR Policy Assistant. "
-            "How can I help you with our HR policies?"
+            "How can I help you with HR policies today?"
         )
 
     # --------------------------------------------------------
@@ -178,8 +195,6 @@ def handle_simple_message(question):
         "thank you",
         "thankyou",
         "thx",
-        "thanks!",
-        "thank you!"
     }:
         return (
             "You're welcome! 😊 "
@@ -194,34 +209,12 @@ def handle_simple_message(question):
         "goodbye",
         "see you",
         "see ya",
-        "bye bye"
+        "bye bye",
     }:
         return (
             "Goodbye! 👋 "
             "Feel free to come back if you have any HR policy questions."
         )
-
-    # --------------------------------------------------------
-    # HELP / INTRODUCTION
-    # --------------------------------------------------------
-
-    if text in {
-        "help",
-        "what can you do",
-        "what can you help me with",
-        "who are you"
-    }:
-        return (
-            "I'm an HR Policy Assistant. 🤖\n\n"
-            "I can help you find information about company "
-            "policies such as leave, working hours, remote work, "
-            "resignation, salary, overtime, performance reviews, "
-            "training, and other HR policies."
-        )
-
-    # --------------------------------------------------------
-    # NOT A SIMPLE MESSAGE
-    # --------------------------------------------------------
 
     return None
 
@@ -232,8 +225,7 @@ def handle_simple_message(question):
 
 def create_query_embedding(query):
     """
-    Create a Gemini Embedding 2 vector
-    for the user's search query.
+    Create a Gemini embedding for the user's search query.
     """
 
     result = client.models.embed_content(
@@ -257,18 +249,13 @@ def generate_gemini_response(prompt):
     """
     Generate a response using Gemini.
 
-    Temporary errors such as 503 are retried
-    automatically.
-
-    Returns:
-        response text
-        None if Gemini remains unavailable
+    Retries temporary errors and returns None if Gemini
+    remains unavailable.
     """
 
     for attempt in range(MAX_GEMINI_RETRIES):
 
         try:
-
             response = client.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=prompt
@@ -296,35 +283,21 @@ def generate_gemini_response(prompt):
                 or "DEADLINE EXCEEDED" in error_text
                 or "TIMEOUT" in error_text
                 or "RESOURCE EXHAUSTED" in error_text
+                or "429" in error_text
+                or "504" in error_text
             )
 
-            # ------------------------------------------------
-            # NON-TEMPORARY ERROR
-            # ------------------------------------------------
-
             if not is_temporary_error:
-
                 print("\nGemini Error:")
                 print(e)
-
                 raise
 
-            # ------------------------------------------------
-            # LAST RETRY
-            # ------------------------------------------------
-
             if attempt == MAX_GEMINI_RETRIES - 1:
-
                 print(
                     "\nGemini is temporarily unavailable "
                     "after multiple attempts."
                 )
-
                 return None
-
-            # ------------------------------------------------
-            # EXPONENTIAL BACKOFF
-            # ------------------------------------------------
 
             wait_time = 2 ** attempt
 
@@ -356,7 +329,6 @@ def save_conversation(
     conn = get_connection()
 
     try:
-
         cursor = conn.cursor()
 
         cursor.execute(
@@ -377,11 +349,9 @@ def save_conversation(
         )
 
         conn.commit()
-
         cursor.close()
 
     finally:
-
         conn.close()
 
 
@@ -394,14 +364,12 @@ def get_conversation_history(
     limit=MEMORY_LIMIT
 ):
     """
-    Get previous conversation messages
-    for the current session.
+    Retrieve previous messages from the current session.
     """
 
     conn = get_connection()
 
     try:
-
         cursor = conn.cursor()
 
         cursor.execute(
@@ -421,26 +389,20 @@ def get_conversation_history(
         )
 
         results = cursor.fetchall()
-
         cursor.close()
 
     finally:
-
         conn.close()
-
-    # Newest messages are returned first.
-    # Reverse them for chronological order.
 
     results.reverse()
 
     history = ""
 
     for user_message, assistant_message in results:
-
-        history += f"""
-User: {user_message}
-Assistant: {assistant_message}
-"""
+        history += (
+            f"\nUser: {user_message}\n"
+            f"Assistant: {assistant_message}\n"
+        )
 
     return history
 
@@ -449,13 +411,10 @@ Assistant: {assistant_message}
 # CREATE SEARCH QUERY USING CONVERSATION MEMORY
 # ============================================================
 
-def create_search_query(
-    question,
-    session_id
-):
+def create_search_query(question, session_id):
     """
-    Rewrite conversational questions into
-    standalone HR policy search queries.
+    Expand HR policy queries with related terminology
+    while preserving the user's original question.
     """
 
     history = get_conversation_history(
@@ -463,82 +422,109 @@ def create_search_query(
         limit=MEMORY_LIMIT
     )
 
-    # --------------------------------------------------------
-    # NO PREVIOUS CONVERSATION
-    # --------------------------------------------------------
+    text = question.lower()
 
-    if not history:
+    synonym_groups = [
+        (
+            [
+                "annual leave",
+                "yearly leave",
+                "vacation",
+                "annual vacation",
+                "yearly vacation",
+                "paid time off",
+                "pto",
+            ],
+            "annual leave entitlement vacation allowance "
+            "leave application leave approval"
+        ),
+        (
+            [
+                "sick leave",
+                "medical leave",
+                "sick day",
+                "leave due to illness",
+            ],
+            "sick leave illness medical certificate "
+            "eligibility duration leave approval"
+        ),
+        (
+            [
+                "casual leave",
+                "personal leave",
+            ],
+            "casual leave personal leave eligibility "
+            "leave application approval"
+        ),
+        (
+            [
+                "maternity leave",
+                "paternity leave",
+                "parental leave",
+            ],
+            "parental leave maternity paternity "
+            "eligibility duration"
+        ),
+        (
+            [
+                "work from home",
+                "working remotely",
+                "remote work",
+                "wfh",
+            ],
+            "remote work work from home eligibility "
+            "approval procedure"
+        ),
+        (
+            [
+                "resign",
+                "resignation",
+                "quit my job",
+                "leaving the company",
+            ],
+            "resignation notice period exit procedure"
+        ),
+    ]
 
-        return question
+    extra_terms = []
 
-    # --------------------------------------------------------
-    # QUERY REWRITING PROMPT
-    # --------------------------------------------------------
+    for phrases, expansion in synonym_groups:
+        if any(phrase in text for phrase in phrases):
+            extra_terms.append(expansion)
 
-    prompt = f"""
-You are a query rewriting component in an
-HR policy retrieval system.
+    expanded_query = question
 
-Your task is ONLY to rewrite the CURRENT USER
-QUESTION into a standalone search query.
+    if extra_terms:
+        expanded_query += " " + " ".join(extra_terms)
 
-Use the previous conversation only to resolve
-references such as:
+    # Resolve follow-up questions using conversation history.
+    if history:
+        prompt = f"""
+You rewrite search queries for an HR policy chatbot.
 
-- it
-- they
-- them
-- this
-- that
-- this leave
-- that policy
-- this rule
+Rewrite the current question as a standalone HR search query.
+Use conversation history only to resolve references.
+Preserve the user's original intent, leave type, numbers,
+durations, dates, and conditions.
+Do not answer the question or invent policy facts.
+Include relevant HR terminology where appropriate.
+Return only the search query.
 
-Do NOT answer the question.
-
-Do NOT invent information.
-
-Do NOT add HR policy facts that are not present
-in the conversation.
-
-Return ONLY the rewritten search query.
-
-==========================================
-PREVIOUS CONVERSATION
-==========================================
-
+PREVIOUS CONVERSATION:
 {history}
 
-==========================================
-CURRENT USER QUESTION
-==========================================
+CURRENT QUESTION:
+{expanded_query}
 
-{question}
-
-==========================================
-OUTPUT
-==========================================
-
-Return ONLY the standalone search query.
+SEARCH QUERY:
 """
 
-    # --------------------------------------------------------
-    # ASK GEMINI TO REWRITE QUERY
-    # --------------------------------------------------------
+        rewritten = generate_gemini_response(prompt)
 
-    search_query = generate_gemini_response(
-        prompt
-    )
+        if rewritten:
+            return expanded_query + " " + rewritten
 
-    # --------------------------------------------------------
-    # GEMINI UNAVAILABLE
-    # --------------------------------------------------------
-
-    if not search_query:
-
-        return question
-
-    return search_query
+    return expanded_query
 
 
 # ============================================================
@@ -550,44 +536,23 @@ def search_policies(
     top_k=TOP_K
 ):
     """
-    Convert query to Gemini Embedding 2 vector
-    and perform cosine similarity search using
-    PostgreSQL + pgvector.
+    Embed the query and search the HR policies table
+    using PostgreSQL and pgvector.
     """
 
-    # --------------------------------------------------------
-    # GENERATE GEMINI EMBEDDING
-    # --------------------------------------------------------
-
-    query_embedding = create_query_embedding(
-        query
-    )
-
-    # --------------------------------------------------------
-    # VERIFY EMBEDDING DIMENSION
-    # --------------------------------------------------------
+    query_embedding = create_query_embedding(query)
 
     if len(query_embedding) != EMBEDDING_DIMENSION:
-
         raise ValueError(
             f"Embedding dimension mismatch. "
             f"Expected {EMBEDDING_DIMENSION}, "
             f"got {len(query_embedding)}."
         )
 
-    # --------------------------------------------------------
-    # CONNECT TO POSTGRESQL
-    # --------------------------------------------------------
-
     conn = get_connection()
 
     try:
-
         cursor = conn.cursor()
-
-        # ----------------------------------------------------
-        # PGVECTOR COSINE SIMILARITY SEARCH
-        # ----------------------------------------------------
 
         cursor.execute(
             """
@@ -596,8 +561,7 @@ def search_policies(
                 category,
                 title,
                 content,
-                1 - (embedding <=> %s::vector)
-                AS similarity
+                1 - (embedding <=> %s::vector) AS similarity
             FROM hr_policies
             ORDER BY embedding <=> %s::vector
             LIMIT %s;
@@ -610,21 +574,14 @@ def search_policies(
         )
 
         results = cursor.fetchall()
-
         cursor.close()
 
     finally:
-
         conn.close()
-
-    # --------------------------------------------------------
-    # FORMAT RETRIEVED POLICIES
-    # --------------------------------------------------------
 
     policies = []
 
     for result in results:
-
         (
             policy_id,
             category,
@@ -639,9 +596,6 @@ def search_policies(
                 "category": category,
                 "title": title,
                 "content": content,
-
-                # Used internally for hallucination
-                # protection. Never displayed to user.
                 "score": float(similarity)
             }
         )
@@ -655,14 +609,12 @@ def search_policies(
 
 def create_policy_context(results):
     """
-    Convert retrieved policies into context
-    for the Gemini RAG prompt.
+    Format retrieved HR policies for the Gemini prompt.
     """
 
     context = ""
 
     for result in results:
-
         context += f"""
 Policy ID: {result['policy_id']}
 Category: {result['category']}
@@ -685,29 +637,21 @@ def generate_answer(
     """
     Complete RAG pipeline:
 
-    1. Simple message detection
-    2. Conversation memory
-    3. Query rewriting
-    4. Gemini Embedding 2
-    5. PostgreSQL + pgvector search
-    6. Similarity threshold
-    7. Gemini grounded answer
-    8. Conversation memory
+    1. Handle greetings and simple messages
+    2. Expand the search query
+    3. Retrieve HR policies
+    4. Check similarity
+    5. Create grounded prompt
+    6. Generate and save the answer
     """
 
     # ========================================================
     # STEP 0: HANDLE SIMPLE MESSAGES
     # ========================================================
 
-    simple_response = handle_simple_message(
-        question
-    )
+    simple_response = handle_simple_message(question)
 
     if simple_response:
-
-        # Save simple conversations as well
-        # so the session history remains complete.
-
         save_conversation(
             question,
             simple_response,
@@ -715,7 +659,6 @@ def generate_answer(
         )
 
         return simple_response
-
 
     # ========================================================
     # STEP 1: CREATE SEARCH QUERY
@@ -726,7 +669,6 @@ def generate_answer(
         session_id
     )
 
-
     # ========================================================
     # STEP 2: SEARCH HR POLICIES
     # ========================================================
@@ -736,62 +678,54 @@ def generate_answer(
         top_k=TOP_K
     )
 
-
     # ========================================================
-    # STEP 3: CHECK RETRIEVAL RESULTS
+    # STEP 3: DEBUG SEARCH RESULTS
     # ========================================================
+    
+    print("\nDEBUG: User question:", question)
+    print("DEBUG: Search query:", search_query)
 
+    for row in results:
+        print(
+            f"Policy ID: {row['policy_id']} | "
+            f"Title: {row['title']} | "
+            f"Category: {row['category']} | "
+            f"Similarity: {float(row['similarity']):.3f}"
+        )
+        # STEP 4: CHECK RETRIEVAL RESULTS
     if not results:
+        print("FAILURE REASON: NO POLICIES RETRIEVED")
 
         answer = (
             "I couldn't find this information "
             "in the HR policies."
         )
 
-        save_conversation(
-            question,
-            answer,
-            session_id
-        )
-
+        save_conversation(question, answer, session_id)
         return answer
 
+    # STEP 5: CHECK SIMILARITY THRESHOLD
+    top_score = float(results[0]["similarity"])
 
-    # ========================================================
-    # STEP 4: INTERNAL SIMILARITY CHECK
-    # ========================================================
-
-    top_score = results[0]["score"]
-
-
-    # ========================================================
-    # STEP 5: HALLUCINATION PROTECTION
-    # ========================================================
+    print("DEBUG: Best similarity:", top_score)
+    print("DEBUG: Required threshold:", SIMILARITY_THRESHOLD)
 
     if top_score < SIMILARITY_THRESHOLD:
+        print("FAILURE REASON: SIMILARITY BELOW THRESHOLD")
 
         answer = (
             "I couldn't find this information "
             "in the HR policies."
         )
 
-        save_conversation(
-            question,
-            answer,
-            session_id
-        )
-
+        save_conversation(question, answer, session_id)
         return answer
-
 
     # ========================================================
     # STEP 6: CREATE POLICY CONTEXT
     # ========================================================
 
-    context = create_policy_context(
-        results
-    )
-
+    context = create_policy_context(results)
 
     # ========================================================
     # STEP 7: GET CONVERSATION HISTORY
@@ -802,115 +736,132 @@ def generate_answer(
         limit=MEMORY_LIMIT
     )
 
-
     # ========================================================
     # STEP 8: CREATE GROUNDED RAG PROMPT
     # ========================================================
 
     prompt = f"""
-You are an HR Policy Assistant.
+You are an intelligent HR Policy Assistant powered by Gemini
+and a Retrieval-Augmented Generation (RAG) system.
 
-Your job is to answer the user's question
-using ONLY the HR policy information provided
-in the HR POLICY INFORMATION section.
+YOUR MAIN OBJECTIVE
+Understand the employee's intended question, regardless of
+their English proficiency, grammar, spelling, or phrasing.
+Answer accurately using the retrieved HR policy documents.
 
-==========================================
-STRICT RULES
-==========================================
+1. UNDERSTAND THE USER
+- Understand natural, informal, incomplete, and grammatically
+  incorrect English.
+- Identify the user's intent rather than relying on exact
+  keyword matches.
+- Use conversation history to resolve references such as
+  "it", "that", "how many days", and "what about this".
+- Preserve leave types, numbers, durations, dates, conditions,
+  and other important details.
+- Answer the current question, not an unrelated earlier one.
 
-1. Use ONLY the provided HR policies.
+2. USE RETRIEVED POLICIES
+- Identify which retrieved policies are relevant to the
+  user's actual question.
+- Match different phrasings when they express the same intent.
+- Use only retrieved policy evidence for HR policy facts.
+- Do not assume a policy permits or prohibits something
+  unless the retrieved evidence supports that conclusion.
 
-2. Do NOT use outside knowledge.
+3. HANDLE PARTIAL INFORMATION
+- If a policy answers part of the question, explain the
+  supported information instead of rejecting the entire
+  question.
+- Explicitly address requested numbers and durations.
+- Distinguish permission to request leave from confirmed
+  entitlement or approval.
+- If the policy does not specify a requested detail, say
+  that the available policy does not specify it.
+- Never invent leave limits, eligibility rules, approval
+  requirements, or other policy facts.
+- If no retrieved policy is relevant, respond:
+  "I couldn't find this information in the HR policies."
 
-3. Do NOT invent information.
+4. CONVERSATION MEMORY
+- Use previous messages to interpret follow-up questions.
+- Previous assistant responses are conversational context,
+  not authoritative evidence of company policy.
+- Use the retrieved policy documents as the source of
+  policy facts.
+- Do not confuse different leave types or policy topics.
 
-4. Do NOT make assumptions.
+5. RESPONSE STYLE
+- Use simple, natural English.
+- Answer directly and politely.
+- Explain what the policy confirms and what remains unknown.
+- Do not mention similarity scores, embeddings, or internal
+  retrieval processes.
+- Do not return an empty answer when relevant policy
+  information is available.
 
-5. Do NOT create new HR policies.
+EXAMPLES
 
-6. Do NOT use previous conversation as a source
-   of HR policy facts.
+Example A:
+Question: Can I take sick leave for two days?
+Retrieved policy:
+Employees can request sick leave when they are unable
+to work due to illness.
 
-7. Previous conversation may ONLY be used to
-   understand references such as:
-   "it", "they", "them", "this", or "that".
+Answer:
+Employees can request sick leave when they are unable
+to work due to illness. However, the available policy
+does not specify whether a two-day request has any
+additional conditions or approval requirements.
+Please confirm those details with HR.
 
-8. Every HR policy fact in the answer must
-   come from the HR POLICY INFORMATION section.
+Example B:
+Question: I am not feeling well. Need leave for 2 days.
+Retrieved policy:
+Employees can request sick leave when they are unable
+to work due to illness.
 
-9. Preserve policy numbers, dates, durations,
-   eligibility requirements, conditions and
-   quantities accurately.
+Answer:
+You can request sick leave if you are unable to work
+due to illness. The available policy does not specify
+the conditions for a two-day request, so please confirm
+the applicable requirements with HR.
 
-10. If the answer cannot be determined from
-    the provided HR policies, respond exactly:
+Example C:
+Question: What about casual leave?
+Retrieved policies:
+Annual Leave: Employees are entitled to 20 days per year.
+Casual Leave: Employees are entitled to 12 days per year.
 
-"I couldn't find this information in the HR policies."
+Answer:
+Employees are entitled to 12 days of casual leave per year.
 
-11. Do not mention similarity scores.
-
-12. Do not mention the RAG system.
-
-13. Do not mention the embedding model.
-
-14. Do not mention PostgreSQL or pgvector.
-
-15. Keep the answer clear and concise.
-
-==========================================
-PREVIOUS CONVERSATION
-==========================================
-
+PREVIOUS CONVERSATION:
 {history}
 
-==========================================
-HR POLICY INFORMATION
-==========================================
-
+RETRIEVED HR POLICY INFORMATION:
 {context}
 
-==========================================
-CURRENT USER QUESTION
-==========================================
-
+CURRENT EMPLOYEE QUESTION:
 {question}
 
-==========================================
-FINAL INSTRUCTION
-==========================================
-
-Answer the CURRENT USER QUESTION using ONLY
-the HR POLICY INFORMATION.
-
-If the information is not present, respond exactly:
-
-"I couldn't find this information in the HR policies."
+Answer the current question using relevant retrieved
+policy evidence and the instructions above.
 """
-
 
     # ========================================================
     # STEP 9: GENERATE FINAL ANSWER
     # ========================================================
 
-    answer = generate_gemini_response(
-        prompt
-    )
-
+    answer = generate_gemini_response(prompt)
 
     # ========================================================
     # STEP 10: GEMINI FAILURE FALLBACK
     # ========================================================
 
     if not answer:
-
-        # Gemini is unavailable.
-        #
-        # Return the most relevant retrieved
-        # policy directly rather than inventing
-        # information.
-
+        # Do not invent an answer when Gemini is unavailable.
+        # The retrieved policy text is provided as a fallback.
         answer = results[0]["content"]
-
 
     # ========================================================
     # STEP 11: SAVE CONVERSATION
@@ -921,7 +872,6 @@ If the information is not present, respond exactly:
         answer,
         session_id
     )
-
 
     # ========================================================
     # STEP 12: RETURN ANSWER
@@ -936,178 +886,85 @@ If the information is not present, respond exactly:
 
 if __name__ == "__main__":
 
-    print(
-        "\n=========================================="
-    )
+    print("\n==========================================")
+    print("          HR POLICY RAG CHATBOT")
+    print("==========================================")
 
-    print(
-        "          HR POLICY RAG CHATBOT"
-    )
+    print("\nEmbedding Model:")
+    print(EMBEDDING_MODEL)
 
-    print(
-        "=========================================="
-    )
+    print("\nEmbedding Dimension:")
+    print(EMBEDDING_DIMENSION)
 
-    print(
-        "\nEmbedding Model:"
-    )
+    print("\nVector Database:")
+    print("PostgreSQL + pgvector")
 
-    print(
-        EMBEDDING_MODEL
-    )
+    print("\nLLM:")
+    print(GEMINI_MODEL)
 
-    print(
-        "\nEmbedding Dimension:"
-    )
+    print("\nConversation Memory:")
+    print("PostgreSQL")
 
-    print(
-        EMBEDDING_DIMENSION
-    )
+    print("\nHallucination Protection:")
+    print("Enabled")
 
-    print(
-        "\nVector Database:"
-    )
+    print("\nGreeting Handling:")
+    print("Enabled")
 
-    print(
-        "PostgreSQL + pgvector"
-    )
-
-    print(
-        "\nLLM:"
-    )
-
-    print(
-        GEMINI_MODEL
-    )
-
-    print(
-        "\nConversation Memory:"
-    )
-
-    print(
-        "PostgreSQL"
-    )
-
-    print(
-        "\nHallucination Protection:"
-    )
-
-    print(
-        "Enabled"
-    )
-
-    print(
-        "\nGreeting Handling:"
-    )
-
-    print(
-        "Enabled"
-    )
-
-    print(
-        "\nType 'exit', 'quit', or 'bye' to stop."
-    )
-
+    print("\nType 'exit', 'quit', or 'bye' to stop.")
 
     # ========================================================
     # CREATE CHAT SESSION
     # ========================================================
 
-    cli_session_id = str(
-        uuid.uuid4()
-    )
+    cli_session_id = str(uuid.uuid4())
 
-    print(
-        "\nSession ID:",
-        cli_session_id
-    )
-
+    print("\nSession ID:", cli_session_id)
 
     # ========================================================
     # START CHAT
     # ========================================================
 
     while True:
-
         try:
+            question = input("\nYou: ").strip()
 
-            question = input(
-                "\nYou: "
-            ).strip()
-
-        except KeyboardInterrupt:
-
-            print(
-                "\n\nChatbot: Goodbye!"
-            )
-
+        except (KeyboardInterrupt, EOFError):
+            print("\n\nChatbot: Goodbye!")
             break
-
-        except EOFError:
-
-            print(
-                "\n\nChatbot: Goodbye!"
-            )
-
-            break
-
 
         # ====================================================
         # EMPTY QUESTION
         # ====================================================
 
         if not question:
-
             print(
                 "\nChatbot: "
                 "Please enter an HR policy question."
             )
-
             continue
-
 
         # ====================================================
         # EXIT COMMAND
         # ====================================================
 
-        if question.lower() in [
-            "exit",
-            "quit",
-            "bye"
-        ]:
-
-            print(
-                "\nChatbot: Goodbye!"
-            )
-
+        if question.lower() in {"exit", "quit", "bye"}:
+            print("\nChatbot: Goodbye!")
             break
-
 
         # ====================================================
         # GENERATE ANSWER
         # ====================================================
 
         try:
-
             answer = generate_answer(
                 question,
                 cli_session_id
             )
 
-            print(
-                "\nChatbot:"
-            )
-
-            print(
-                answer
-            )
+            print("\nChatbot:")
+            print(answer)
 
         except Exception as e:
-
-            print(
-                "\nError:"
-            )
-
-            print(
-                str(e)
-            )
+            print("\nError:")
+            print(str(e))

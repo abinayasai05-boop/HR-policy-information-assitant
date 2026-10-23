@@ -1,269 +1,863 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="theme-color" content="#09090d">
     <title>HR Policy AI Assistant</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3">
+
+    <style>
+        :root {
+            --bg: #08080c;
+            --text: #f7f7fb;
+            --muted: #9898a9;
+            --line: rgba(255,255,255,.075);
+            --line-strong: rgba(255,255,255,.13);
+            --purple: #8b5cf6;
+            --green: #22c55e;
+            --shadow: 0 24px 80px rgba(0,0,0,.42);
+            --radius-xl: 24px;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 78% 8%, rgba(139,92,246,.13), transparent 26%),
+                radial-gradient(circle at 35% 100%, rgba(236,72,153,.07), transparent 24%),
+                var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        button, textarea { font: inherit; }
+        button { -webkit-tap-highlight-color: transparent; }
+
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            padding: 14px;
+            display: flex;
+            gap: 14px;
+            max-width: 1700px;
+            margin: auto;
+            position: relative;
+        }
+
+        .app-container::before {
+            content: "";
+            position: fixed;
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            background: rgba(139,92,246,.08);
+            filter: blur(100px);
+            top: -220px;
+            right: 8%;
+            pointer-events: none;
+        }
+
+        /* SIDEBAR */
+
+        .sidebar {
+            width: 278px;
+            min-width: 278px;
+            height: 100%;
+            padding: 18px 14px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-xl);
+            background: linear-gradient(180deg, rgba(18,18,25,.95), rgba(12,12,17,.96));
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 8px 20px;
+        }
+
+        .brand-mark, .assistant-avatar {
+            display: grid;
+            place-items: center;
+            background: linear-gradient(145deg, #7c3aed, #a855f7 60%, #c026d3);
+            box-shadow: 0 10px 30px rgba(139,92,246,.32);
+            position: relative;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .brand-copy strong, .brand-copy span { display: block; }
+        .brand-copy strong { font-size: 14px; }
+        .brand-copy span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+        .new-chat {
+            width: 100%;
+            border: 0;
+            border-radius: 14px;
+            padding: 13px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            color: white;
+            background: linear-gradient(135deg, #7c3aed, #9d4edd 55%, #c026d3);
+            box-shadow: 0 12px 30px rgba(139,92,246,.25);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 13px;
+            transition: .2s ease;
+        }
+
+        .new-chat:hover { transform: translateY(-1px); }
+        .new-chat-icon { font-size: 19px; }
+
+        .sidebar-section { margin-top: 25px; }
+
+        .section-title {
+            margin: 0 10px 10px;
+            color: #777789;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.4px;
+        }
+
+        .suggestion {
+            width: 100%;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            background: transparent;
+            color: #aaaaba;
+            padding: 9px 10px;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            cursor: pointer;
+            text-align: left;
+            margin-bottom: 3px;
+            transition: .18s ease;
+        }
+
+        .suggestion:hover {
+            color: white;
+            background: rgba(139,92,246,.09);
+            border-color: rgba(139,92,246,.14);
+            transform: translateX(2px);
+        }
+
+        .suggestion-icon {
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 9px;
+            background: rgba(255,255,255,.045);
+            border: 1px solid rgba(255,255,255,.05);
+        }
+
+        .suggestion span:last-child { font-size: 12px; font-weight: 600; }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 13px 11px 4px;
+            border-top: 1px solid var(--line);
+        }
+
+        .system-card { display: flex; align-items: center; gap: 10px; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 14px rgba(34,197,94,.7);
+        }
+
+        .system-card strong { display: block; font-size: 11px; }
+        .system-card small { color: #686878; font-size: 9px; display: block; margin-top: 3px; }
+
+        /* MAIN CHAT */
+
+        .chat-area {
+            min-width: 0;
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-xl);
+            background: rgba(12,12,17,.84);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(24px);
+        }
+
+        .chat-header {
+            min-height: 72px;
+            padding: 13px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(18,18,24,.78);
+            z-index: 10;
+        }
+
+        .assistant-info {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-width: 0;
+        }
+
+        .assistant-avatar {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            border-radius: 12px;
+            font-size: 17px;
+        }
+
+        .assistant-details h1 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .online-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #8e8e9f;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        .online-status span:first-child {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .header-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: rgba(255,255,255,.035);
+            border: 1px solid var(--line);
+            color: #8f8f9f;
+            font-size: 10px;
+        }
+
+        .header-pill b { color: #c4b5fd; }
+
+        /* NEW VOICE TOGGLE BUTTONS */
+
+        .voice-toggle {
+            border: 1px solid var(--line-strong);
+            background: rgba(255,255,255,.025);
+            color: #aaaaba;
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: .2s ease;
+        }
+
+        .voice-toggle:hover {
+            color: white;
+            border-color: rgba(139,92,246,.45);
+            background: rgba(139,92,246,.10);
+        }
+
+        .voice-toggle.active {
+            color: #d8ccff;
+            border-color: rgba(139,92,246,.65);
+            background: rgba(139,92,246,.17);
+            box-shadow: 0 0 0 2px rgba(139,92,246,.06);
+        }
+
+        .clear-button {
+            border: 1px solid var(--line-strong);
+            background: rgba(255,255,255,.025);
+            color: #9d9daa;
+            padding: 8px 11px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            transition: .18s ease;
+        }
+
+        .clear-button:hover {
+            color: white;
+            border-color: rgba(139,92,246,.35);
+            background: rgba(139,92,246,.08);
+        }
+
+        /* MESSAGES AND WELCOME SCREEN */
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px clamp(18px, 4vw, 60px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            scroll-behavior: smooth;
+            background: radial-gradient(circle at 50% 20%, rgba(139,92,246,.045), transparent 35%);
+        }
+
+        .welcome-section {
+            width: 100%;
+            max-width: 850px;
+            text-align: center;
+            margin-bottom: 26px;
+            animation: rise .5s ease both;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-logo {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 17px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(145deg, rgba(139,92,246,.22), rgba(168,85,247,.06)), #101016;
+            border: 1px solid rgba(168,85,247,.2);
+            box-shadow: 0 18px 55px rgba(139,92,246,.16);
+            font-size: 30px;
+        }
+
+        .welcome-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(139,92,246,.08);
+            border: 1px solid rgba(139,92,246,.15);
+            color: #b9a5f8;
+            font-size: 9px;
+            font-weight: 700;
+            margin-bottom: 13px;
+        }
+
+        .badge-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #a78bfa;
+        }
+
+        .welcome-section h2 {
+            margin: 0;
+            font-size: clamp(27px, 4vw, 42px);
+            line-height: 1.1;
+            letter-spacing: -1.6px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #fff, #d9d0f7 55%, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .welcome-section p {
+            max-width: 620px;
+            margin: 12px auto 0;
+            color: #7f7f90;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .welcome-cards {
+            width: 100%;
+            max-width: 850px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .welcome-card {
+            min-height: 92px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: linear-gradient(145deg, rgba(24,24,32,.72), rgba(15,15,21,.78));
+            cursor: pointer;
+            position: relative;
+            transition: .22s ease;
+        }
+
+        .welcome-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(139,92,246,.3);
+            box-shadow: 0 15px 35px rgba(0,0,0,.22);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: rgba(139,92,246,.09);
+            border: 1px solid rgba(139,92,246,.11);
+            font-size: 17px;
+        }
+
+        .card-content { min-width: 0; flex: 1; }
+        .card-content strong { display: block; color: #e9e9f0; font-size: 11px; margin-bottom: 4px; }
+        .card-content small { display: block; color: #777789; font-size: 9px; line-height: 1.4; }
+        .card-arrow { color: #777789; font-size: 15px; }
+
+        /* INPUT AREA */
+
+        .input-area {
+            width: 100%;
+            padding: 10px clamp(18px, 4vw, 60px) 17px;
+            background: linear-gradient(180deg, transparent, rgba(9,9,13,.78) 18%);
+            position: relative;
+            z-index: 5;
+        }
+
+        .composer-wrap { width: 100%; max-width: 850px; margin: 0 auto; }
+
+        .input-box {
+            min-height: 58px;
+            padding: 7px 8px 7px 15px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            border-radius: 18px;
+            background: rgba(26,26,33,.92);
+            border: 1px solid rgba(255,255,255,.105);
+            box-shadow: 0 15px 45px rgba(0,0,0,.28);
+            transition: .2s ease;
+        }
+
+        .input-box:focus-within {
+            border-color: rgba(139,92,246,.5);
+            box-shadow: 0 0 0 4px rgba(139,92,246,.08);
+        }
+
+        .composer-icon { color: #a78bfa; font-size: 17px; }
+
+        .input-box textarea {
+            min-width: 0;
+            flex: 1;
+            max-height: 130px;
+            min-height: 40px;
+            padding: 10px 0;
+            resize: none;
+            outline: none;
+            border: 0;
+            background: transparent;
+            color: #f5f5f8;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .input-box textarea::placeholder { color: #5e5e6d; }
+
+        #voiceButton {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 13px;
+            display: grid;
+            place-items: center;
+            color: #d7caff;
+            background: rgba(139,92,246,.12);
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        #voiceButton:hover, #voiceButton.listening {
+            border-color: rgba(139,92,246,.7);
+            background: rgba(139,92,246,.28);
+        }
+
+        #sendButton {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            border: 0;
+            border-radius: 13px;
+            display: grid;
+            place-items: center;
+            color: white;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            box-shadow: 0 8px 22px rgba(139,92,246,.3);
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        #sendButton:hover { transform: translateY(-1px) scale(1.03); }
+
+        .input-tools {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin: 7px 3px 0;
+        }
+
+        .composer-hint, .shortcut { color: #595967; font-size: 8px; }
+        .input-note { margin: 8px 0 0; text-align: center; color: #494956; font-size: 8px; }
+
+        /* RESPONSIVE LAYOUT */
+
+        @media (max-width: 1200px) {
+            .sidebar { width: 225px; min-width: 225px; }
+            .welcome-cards { grid-template-columns: repeat(2, 1fr); }
+            .header-pill { display: none; }
+        }
+
+        @media (max-width: 900px) {
+            .chat-header { align-items: flex-start; }
+            .header-actions { max-width: 60%; }
+            .voice-toggle { padding: 8px; }
+        }
+
+        @media (max-width: 720px) {
+            body { overflow: auto; }
+
+            .app-container {
+                height: 100vh;
+                padding: 0;
+                display: block;
+            }
+
+            .sidebar { display: none; }
+
+            .chat-area {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+                border: 0;
+            }
+
+            .chat-header {
+                min-height: 62px;
+                padding: 10px 12px;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .assistant-info { gap: 8px; }
+            .assistant-avatar { width: 34px; height: 34px; flex-basis: 34px; }
+            .assistant-details h1 { font-size: 12px; }
+            .online-status { font-size: 9px; }
+
+            .header-actions {
+                gap: 5px;
+                max-width: 58%;
+            }
+
+            .voice-toggle {
+                font-size: 9px;
+                padding: 7px 6px;
+                white-space: normal;
+            }
+
+            .clear-button { padding: 8px; }
+            .clear-button span:last-child { display: none; }
+
+            .messages { padding: 22px 13px; }
+            .welcome-cards { grid-template-columns: 1fr; }
+            .welcome-section h2 { font-size: 29px; }
+            .input-area { padding: 8px 12px 13px; }
+            .input-tools { align-items: flex-start; }
+            .shortcut { text-align: right; }
+        }
+
+        ::selection { background: rgba(139,92,246,.35); color: white; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #292934; border-radius: 20px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a3a49; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}?v=3" defer></script>
 </head>
 
 <body>
+<div class="app-container">
 
-    <div class="app-container">
-
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-
-            <div class="brand">
-                <div class="brand-icon">✦</div>
-
-                <div>
-                    <h2>HR Policy AI</h2>
-                    <span>Enterprise Assistant</span>
-                </div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">✦</div>
+            <div class="brand-copy">
+                <strong>HR Policy AI</strong>
+                <span>Enterprise Knowledge Assistant</span>
             </div>
+        </div>
 
-            <button class="new-chat" onclick="clearChat()">
-                <span>＋</span>
-                New Conversation
+        <button class="new-chat" onclick="clearChat()" type="button">
+            <span class="new-chat-icon">＋</span>
+            <span>New Conversation</span>
+        </button>
+
+        <div class="sidebar-section">
+            <p class="section-title">POLICY CATEGORIES</p>
+
+            <button class="suggestion" onclick="askQuestion('How many days of annual leave can employees take?')" type="button">
+                <span class="suggestion-icon">🏖️</span><span>Annual Leave</span>
             </button>
 
-            <div class="sidebar-section">
+            <button class="suggestion" onclick="askQuestion('What is the maternity leave policy?')" type="button">
+                <span class="suggestion-icon">👶</span><span>Maternity Leave</span>
+            </button>
 
-                <p class="section-title">Policy Categories</p>
+            <button class="suggestion" onclick="askQuestion('Can employees work from home?')" type="button">
+                <span class="suggestion-icon">🏠</span><span>Remote Work</span>
+            </button>
 
-                <button class="suggestion"
-                    onclick="askQuestion('How many days of annual leave can employees take?')">
-                    🏖️ Annual Leave
-                </button>
+            <button class="suggestion" onclick="askQuestion('What are the standard working hours?')" type="button">
+                <span class="suggestion-icon">🕘</span><span>Working Hours</span>
+            </button>
 
-                <button class="suggestion"
-                    onclick="askQuestion('What is the maternity leave policy?')">
-                    👶 Maternity Leave
-                </button>
+            <button class="suggestion" onclick="askQuestion('What is the notice period when resigning?')" type="button">
+                <span class="suggestion-icon">📄</span><span>Resignation</span>
+            </button>
 
-                <button class="suggestion"
-                    onclick="askQuestion('Can employees work from home?')">
-                    🏠 Remote Work
-                </button>
+            <button class="suggestion" onclick="askQuestion('How is salary paid to employees?')" type="button">
+                <span class="suggestion-icon">💰</span><span>Compensation</span>
+            </button>
+        </div>
 
-                <button class="suggestion"
-                    onclick="askQuestion('What are the standard working hours?')">
-                    🕘 Working Hours
-                </button>
+        <div class="sidebar-bottom">
+            <div class="system-card">
+                <span class="status-dot"></span>
+                <div>
+                    <strong>Knowledge Base Online</strong>
+                    <small>RAG system ready</small>
+                </div>
+            </div>
+        </div>
+    </aside>
 
-                <button class="suggestion"
-                    onclick="askQuestion('What is the notice period when resigning?')">
-                    📄 Resignation
-                </button>
-
+    <!-- MAIN CHAT -->
+    <main class="chat-area">
+        <header class="chat-header">
+            <div class="assistant-info">
+                <div class="assistant-avatar">✦</div>
+                <div class="assistant-details">
+                    <h1>HR Policy Assistant</h1>
+                    <div class="online-status">
+                        <span></span>
+                        <span>AI Assistant · RAG Connected</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="sidebar-bottom">
-
-                <div class="status">
-                    <span class="status-dot"></span>
-                    System Online
+            <div class="header-actions">
+                <div class="header-pill">
+                    <span>Model</span><b>Gemini</b>
                 </div>
 
-                <div class="powered">
-                    Gemini · RAG · PostgreSQL
+                <div class="header-pill">
+                    <span>Mode</span><b>Policy RAG</b>
                 </div>
 
-            </div>
+                <!-- NEW: Voice input toggle -->
+                <button
+                    id="voiceInputToggle"
+                    class="voice-toggle"
+                    type="button"
+                    aria-pressed="false"
+                    title="Enable or disable speech recognition"
+                >🎙️ Voice Input: OFF</button>
 
-        </aside>
+                <!-- NEW: Voice output toggle -->
+                <button
+                    id="voiceOutputToggle"
+                    class="voice-toggle"
+                    type="button"
+                    aria-pressed="false"
+                    title="Enable or disable spoken assistant replies"
+                >🔊 Voice Output: OFF</button>
 
-
-        <!-- MAIN CHAT -->
-        <main class="chat-area">
-
-            <!-- HEADER -->
-            <header class="chat-header">
-
-                <div class="assistant-info">
-
-                    <div class="assistant-avatar">
-                        ✦
-                    </div>
-
-                    <div>
-                        <h1>HR Policy Assistant</h1>
-
-                        <div class="online-status">
-                            <span></span>
-                            AI Assistant
-                        </div>
-                    </div>
-
-                </div>
-
-                <button class="clear-button" onclick="clearChat()">
-                    Clear
+                <button class="clear-button" onclick="clearChat()" type="button" title="Clear conversation">
+                    <span>↻</span><span>Clear</span>
                 </button>
+            </div>
+        </header>
 
-            </header>
+        <!-- MESSAGES -->
+        <section class="messages" id="messages">
+            <div class="welcome-section">
+                <div class="welcome-logo">✦</div>
 
-
-            <!-- MESSAGES -->
-            <section class="messages" id="messages">
-
-                <!-- PROFESSIONAL WELCOME -->
-                <div class="welcome-section">
-
-                    <div class="welcome-icon">
-                        ✦
-                    </div>
-
-                    <h2>HR Policy Assistant</h2>
-
-                    <p>
-                        Search and retrieve information from the organization's
-                        HR policy knowledge base.
-                    </p>
-
+                <div class="welcome-badge">
+                    <span class="badge-dot"></span>
+                    AI-POWERED HR KNOWLEDGE BASE
                 </div>
 
+                <h2>How can I help you?</h2>
 
-                <!-- POLICY CARDS -->
-                <div class="welcome-cards">
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('How many days of annual leave can employees take?')">
-
-                        <span>🏖️</span>
-
-                        <div>
-                            <strong>Annual Leave</strong>
-                            <small>Leave entitlement and policies</small>
-                        </div>
-
-                    </div>
-
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('What is the maternity leave policy?')">
-
-                        <span>👶</span>
-
-                        <div>
-                            <strong>Maternity Leave</strong>
-                            <small>Maternity benefits and eligibility</small>
-                        </div>
-
-                    </div>
-
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('Can employees work from home?')">
-
-                        <span>🏠</span>
-
-                        <div>
-                            <strong>Remote Work</strong>
-                            <small>Work-from-home policies</small>
-                        </div>
-
-                    </div>
-
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('What are the standard working hours?')">
-
-                        <span>🕘</span>
-
-                        <div>
-                            <strong>Working Hours</strong>
-                            <small>Working hours and attendance</small>
-                        </div>
-
-                    </div>
-
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('What is the notice period when resigning?')">
-
-                        <span>📄</span>
-
-                        <div>
-                            <strong>Resignation</strong>
-                            <small>Notice period and exit policies</small>
-                        </div>
-
-                    </div>
-
-
-                    <div class="welcome-card"
-                        onclick="askQuestion('How is salary paid to employees?')">
-
-                        <span>💰</span>
-
-                        <div>
-                            <strong>Compensation</strong>
-                            <small>Salary and compensation policies</small>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            <!-- TYPING INDICATOR -->
-            <div class="typing-container" id="typing">
-
-                <div class="typing-bubble">
-
-                    <span></span>
-                    <span></span>
-                    <span></span>
-
-                </div>
-
-                <small>Processing your request...</small>
-
+                <p>
+                    Ask questions about company policies, employee benefits,
+                    leave, attendance, remote work, compensation and more.
+                </p>
             </div>
 
+            <div class="welcome-cards">
+                <div class="welcome-card" onclick="askQuestion('How many days of annual leave can employees take?')">
+                    <div class="card-icon">🏖️</div>
+                    <div class="card-content">
+                        <strong>Annual Leave</strong>
+                        <small>Entitlement, eligibility and leave rules</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
 
-            <!-- INPUT -->
-            <footer class="input-area">
+                <div class="welcome-card" onclick="askQuestion('What is the maternity leave policy?')">
+                    <div class="card-icon">👶</div>
+                    <div class="card-content">
+                        <strong>Maternity Leave</strong>
+                        <small>Benefits, duration and eligibility</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
 
+                <div class="welcome-card" onclick="askQuestion('Can employees work from home?')">
+                    <div class="card-icon">🏠</div>
+                    <div class="card-content">
+                        <strong>Remote Work</strong>
+                        <small>Work-from-home requirements</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+
+                <div class="welcome-card" onclick="askQuestion('What are the standard working hours?')">
+                    <div class="card-icon">🕘</div>
+                    <div class="card-content">
+                        <strong>Working Hours</strong>
+                        <small>Attendance and standard schedules</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+
+                <div class="welcome-card" onclick="askQuestion('What is the notice period when resigning?')">
+                    <div class="card-icon">📄</div>
+                    <div class="card-content">
+                        <strong>Resignation</strong>
+                        <small>Notice periods and exit policies</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+
+                <div class="welcome-card" onclick="askQuestion('How is salary paid to employees?')">
+                    <div class="card-icon">💰</div>
+                    <div class="card-content">
+                        <strong>Compensation</strong>
+                        <small>Salary and compensation policies</small>
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPOSER -->
+        <footer class="input-area">
+            <div class="composer-wrap">
                 <div class="input-box">
+                    <span class="composer-icon">✦</span>
 
                     <textarea
                         id="question"
-                        placeholder="Ask about HR policies..."
+                        placeholder="Ask anything about your HR policies..."
                         rows="1"
                         onkeydown="handleKey(event)"
+                        aria-label="Enter your HR policy question"
                     ></textarea>
+ 
+                    <button
+                        id="voiceButton"
+                        type="button"
+                        class="voice-button"
+                        title="Ask using your voice"
+                        aria-label="Ask using your voice"
+                    >🎙️</button>
 
                     <button
                         id="sendButton"
                         onclick="sendMessage()"
                         aria-label="Send message"
-                    >
-                        <span>➤</span>
-                    </button>
+                        type="button"
+                    ><span>➤</span></button>
+                </div>
 
+                <div class="input-tools">
+                    <span class="composer-hint">Answers are grounded in your HR knowledge base</span>
+                    <span class="shortcut">Enter to send · Shift + Enter for new line</span>
                 </div>
 
                 <p class="input-note">
-                    Responses are generated from the organization's HR policy knowledge base.
+                    AI-generated responses may require verification against official company policy.
                 </p>
-
-            </footer>
-
-        </main>
-
-    </div>
-
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+            </div>
+        </footer>
+    </main>
+</div>
 
 </body>
-
 </html>
+ 
