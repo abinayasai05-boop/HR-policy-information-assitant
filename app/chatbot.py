@@ -705,7 +705,9 @@ def generate_answer(
         return answer
 
     # STEP 5: CHECK SIMILARITY THRESHOLD
-    top_score = float(results[0]["similarity"])
+    
+top_score = float(results[0]["score"])
+
 
     print("DEBUG: Best similarity:", top_score)
     print("DEBUG: Required threshold:", SIMILARITY_THRESHOLD)
