@@ -34,7 +34,6 @@ const voiceOutputToggle = document.getElementById("voiceOutputToggle");
    ============================================================ */
 
 let isSending = false;
-let lastVoiceSubmission = "";
 let recognition = null;
 let isListening = false;
 let finalTranscript = "";
@@ -836,7 +835,7 @@ function initializeVoiceInput() {
 
     recognition = new SpeechRecognitionAPI();
     recognition.lang = "en-IN";
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
@@ -848,123 +847,121 @@ function initializeVoiceInput() {
         voiceButton.classList.add("listening");
         voiceButton.title = "Listening... Click again to finish";
     };
+    
 
-    recognition.onresult = function (event) {
-        if (!voiceInputEnabled || !questionInput) return;
+recognition.onresult = function (event) {
+    if (!voiceInputEnabled || !questionInput) return;
 
-        let completedText = "";
-        let interimText = "";
+    const finalParts = [];
+    let interimText = "";
 
-        // Rebuild the transcript instead of repeatedly appending
-        // results that the browser may report again.
-        for (let i = 0; i < event.results.length; i++) {
-            const result = event.results[i];
-            const transcript = result[0].transcript;
+    for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = result[0].transcript.trim();
 
-            if (result.isFinal) {
-                completedText += transcript + " ";
-            } else {
-                interimText += transcript;
-            }
+        if (!text) continue;
+
+        if (result.isFinal) {
+            finalParts.push(text);
+        } else {
+            // Keep only the current interim result.
+            interimText = text;
         }
-
-        finalTranscript = completedText.trim();
-
-        questionInput.value =
-            (completedText + interimText).trim();
-
-        questionInput.dispatchEvent(
-            new Event("input", { bubbles: true })
-        );
-    };
-
-    recognition.onerror = function (event) {
-        console.error("Voice recognition error:", event.error);
-
-        const errors = {
-            "not-allowed":
-                "Microphone access denied. Allow microphone access in Chrome settings.",
-            "service-not-allowed":
-                "The browser has blocked speech recognition.",
-            "no-speech":
-                "No speech detected. Please try again.",
-            "audio-capture":
-                "No microphone detected. Check your microphone connection.",
-            "network":
-                "Speech recognition network error. Check your internet connection."
-        };
-
-        if (event.error !== "aborted") {
-            alert(
-                errors[event.error] ||
-                "Microphone error: " + event.error
-            );
-        }
-    };
-
-    recognition.onend = function () {
-        isListening = false;
-
-        if (voiceButton) {
-            voiceButton.classList.remove("listening");
-            voiceButton.textContent = "🎙️";
-            voiceButton.title = voiceInputEnabled
-                ? "Ask using your voice"
-                : "Enable Voice Input first";
-        }
-
-       const question = finalTranscript.trim();
-finalTranscript = "";
-
-if (!voiceInputEnabled || !question || isSending) {
-    return;
-}
-
-// Prevent the same voice result from being submitted twice.
-if (question === lastVoiceSubmission) {
-    return;
-}
-
-lastVoiceSubmission = question;
-
-questionInput.value = question;
-updateSendButton();
-autoResizeTextarea();
-
-sendMessage();
-    };
-
-    voiceButton.addEventListener("click", function () {
-        if (!voiceInputEnabled) {
-            alert("Please switch Voice Input ON first.");
-            return;
-        }
-
-        if (isSending) return;
-
-       if (isListening) {
-    voiceButton.disabled = true;
-    voiceButton.textContent = "⏳";
-    voiceButton.title = "Finishing voice input...";
-
-    try {
-        recognition.stop();
-    } catch (error) {
-        console.error("Could not stop microphone:", error);
-        voiceButton.disabled = false;
     }
 
-    return;
-}
-        // Reset the previous voice result before a new recording.
-        finalTranscript = "";
+    finalTranscript = finalParts.join(" ").trim();
+
+    // Show finalized words plus the current unfinished words.
+    questionInput.value = [
+        finalTranscript,
+        interimText
+    ].filter(Boolean).join(" ").trim();
+
+    updateSendButton();
+    autoResizeTextarea();
+};
+
+recognition.onerror = function (event) {
+    console.error("Voice recognition error:", event.error);
+
+    const errors = {
+        "not-allowed":
+            "Microphone access denied. Allow microphone access in Chrome settings.",
+        "service-not-allowed":
+            "The browser has blocked speech recognition.",
+        "no-speech":
+            "No speech detected. Please try again.",
+        "audio-capture":
+            "No microphone detected. Check your microphone connection.",
+        "network":
+            "Speech recognition network error. Check your internet connection."
+    };
+
+    if (event.error !== "aborted") {
+        alert(
+            errors[event.error] ||
+            "Microphone error: " + event.error
+        );
+    }
+};
+
+recognition.onend = function () {
+    isListening = false;
+
+    if (voiceButton) {
+        voiceButton.classList.remove("listening");
+        voiceButton.textContent = "🎙️";
+        voiceButton.disabled = !voiceInputEnabled;
+        voiceButton.title = voiceInputEnabled
+            ? "Ask using your voice"
+            : "Enable Voice Input first";
+    }
+
+    const question = finalTranscript.trim();
+    finalTranscript = "";
+
+    if (!voiceInputEnabled || !question || isSending) {
+        return;
+    }
+
+    questionInput.value = question;
+    updateSendButton();
+    autoResizeTextarea();
+
+    sendMessage();
+};
+
+voiceButton.addEventListener("click", function () {
+    if (!voiceInputEnabled) {
+        alert("Please switch Voice Input ON first.");
+        return;
+    }
+
+    if (isSending) return;
+
+    if (isListening) {
+        voiceButton.disabled = true;
+        voiceButton.textContent = "⏳";
+        voiceButton.title = "Finishing voice input...";
 
         try {
-            recognition.start();
+            recognition.stop();
         } catch (error) {
-            console.error("Could not start microphone:", error);
+            console.error("Could not stop microphone:", error);
+            voiceButton.disabled = false;
         }
-    });
+
+        return;
+    }
+
+    finalTranscript = "";
+
+    try {
+        recognition.start();
+    } catch (error) {
+        console.error("Could not start microphone:", error);
+    }
+});
 }
 
 /* ============================================================
